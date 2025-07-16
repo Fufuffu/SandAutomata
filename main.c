@@ -28,7 +28,6 @@ typedef struct CellData {
     bool processed;
 } CellData;
 
-// TODO: Mark blocks as liquids
 CellData CellFromType(BlockType type) {
     switch (type) {
     case BLOCK_AIR:
@@ -42,6 +41,10 @@ CellData CellFromType(BlockType type) {
     }
 }
 
+static inline bool IsLiquid(BlockType block) {
+    return block == BLOCK_WATER || block == BLOCK_ACID;
+}
+
 static inline int TrySlide(int startRow, int col, int dir, CellData *state) {
     int currentRow = startRow;
     for (int steps = 1; steps <= 8; ++steps) {
@@ -49,7 +52,7 @@ static inline int TrySlide(int startRow, int col, int dir, CellData *state) {
         if (currentRow < 0 || currentRow >= WORKING_WIDTH) break;
 
         int pos = col * WORKING_WIDTH + currentRow;
-        if (state[pos].type != BLOCK_WATER && state[pos].type != BLOCK_ACID) {
+        if (!IsLiquid(state[pos].type)) {
             if (state[pos].type == BLOCK_AIR) {
                 return pos;
             }
@@ -119,11 +122,11 @@ int main(void) {
 
                 switch (type) {
                 case BLOCK_SAND:
-                    if (under != -1 && currState[under].type == BLOCK_AIR)
+                    if (under != -1 && (currState[under].type == BLOCK_AIR || IsLiquid(currState[under].type)))
                         dest = under;
-                    else if (underLeft != -1 && currState[underLeft].type == BLOCK_AIR)
+                    else if (underLeft != -1 && (currState[underLeft].type == BLOCK_AIR || IsLiquid(currState[underLeft].type)))
                         dest = underLeft;
-                    else if (underRight != -1 && currState[underRight].type == BLOCK_AIR)
+                    else if (underRight != -1 && (currState[underRight].type == BLOCK_AIR || IsLiquid(currState[underRight].type)))
                         dest = underRight;
                     break;
                 case BLOCK_WATER:
@@ -159,9 +162,12 @@ int main(void) {
                 }
 
                 if (dest != -1) {
+                    CellData oldDest = currState[dest];
+
                     currState[dest] = currState[pos];
                     currState[dest].processed = true;
-                    currState[pos] = CellFromType(BLOCK_AIR);
+
+                    currState[pos] = oldDest;
                     currState[pos].processed = true;
                 }
                 currState[pos].processed = true;
